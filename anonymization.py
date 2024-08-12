@@ -3,6 +3,7 @@ import os, time, sys
 from datetime import datetime
 import pydicom as dcm
 import numpy as np
+from scipy import interpolate
 
 sys.path.append('../')
 from Slice_Selection.slice_selection import *
@@ -16,6 +17,17 @@ def xyz_to_image_coords(X,Y,Z,spacing,origin):
     
     return X_new, Y_new, Z_new
 
+
+def get_uni_spline(xi,yi):
+    
+        # Fit spline with s=0 (passing through all points)
+    tck = interpolate.UnivariateSpline(xi, yi, s=0)
+        
+#         # Evaluate spline for 1000 evenly spaced points
+#         xj, yj = interpolate.splev(np.linspace(0, 1, 1000), tck)
+    return tck
+        
+        
 def reverse_pixels_hu(anon,scans):
 #     image = np.stack([s.pixel_array for s in scans])
     # Convert to int16 (from sometimes int16), 
@@ -76,10 +88,94 @@ def generate_anon_image(image,z_lists,spacing, start_z,y_cutoff, cut_above = Tru
     # print(mask*-1+1)
     # print(anon_image)
     return anon_image*mask++(mask*-1+1)*(-1000)
+
+
+def get_contour_curves(slices, all_z_slices, y_cutoff_roi):
+    dict_curves = {}
     
+    for c_slice in slices:
+#         print(c_slice[2] )
+        z = c_slice[2]
+        if z in all_z_slices or z>min(all_z_slices):
+#             print(z)
+            
+            
+
+            xo = []
+            yo = []
+            x_prev = -1000
+
+            xi, yi, zi = c_slice[::3], c_slice[1::3], c_slice[2::3]
+            for k,y_i in enumerate(yi):
+            #         print(xi[k])
+                if y_i < y_cutoff_roi and x_prev != xi[k]:
+                    xo.append(xi[k])
+                    yo.append(yi[k])
+                    x_prev = xi[k]
+                    
+            
+            if len(xo)> 3 and len(yo) > 3:
+                
+                
+
+                xy = [[xs,ys] for xs, ys in sorted(zip(xo, yo))]
+                print("xy",xy)
+                xs, ys = zip(*xy)
+                print("xs",xs)
+#                 x_prev = -1000
+                xs = list(xs)
+                ys = list(ys)
+                
+                ind_to_del = []
+                
+#                 i = 1
+                for i,x in enumerate(xs):
+                    # print(i,x)
+                    # print(x, xs[i-1])
+                    if x == xs[i-1]:
+                        # print("YRD")
+                        if  ys[i] > ys[i-1]:
+                            ind_to_del.append(i-1)
+
+                        else:
+                            ind_to_del.append(i)
+#                     i+=1
+                
+                offset =0
+                for ind in ind_to_del:
+                    del xs[ind-offset]
+                    del ys[ind-offset]
+                    offset+=1
+                    
+#                         print(len(xs))
+#                         if  ys[i] > ys[i-1]:
+#                             del ys[i-1]
+#                             del xs[i-1]
+
+#                         else:
+#                             del ys[i]
+#                             del xs[i]
+#                         i-=1
+                   
+    
+
+                        
+                # print(xs)
+                # print(ys)
+
+                s =  get_uni_spline(xs, ys)
+    #             print(s)
+                dict_curves[z] = {}
+                dict_curves[z]['spline'] = s
+                dict_curves[z]['x_max'] = max(xs)
+                dict_curves[z]['x_min'] = min(xs)
+    return dict_curves
+
+
+
 def generate_anon_body(dict_contours_body,z_lists,y_cutoff, isodose=[], body_name = 'BODY',contours_to_keep=[],get_ind = False,reverse_z=False):
     all_z_slices = sorted(z_lists[0] + [z for z in z_lists[1] if z not in z_lists[0]])
-
+    print(body_name)
 #     x_iso = X_new
 #     y_iso = Y_new
 #     z_iso = Z_new
@@ -88,9 +184,9 @@ def generate_anon_body(dict_contours_body,z_lists,y_cutoff, isodose=[], body_nam
     contour_curves = {}
   
     for contour in contours_to_keep:
-        print(contour)
+        # print(contour)
         contour_curves[contour] = get_contour_curves(contours_to_keep[contour], all_z_slices, y_cutoff)
-        print(contour_curves)
+        # print(contour_curves)
  
         
     
@@ -130,8 +226,8 @@ def generate_anon_body(dict_contours_body,z_lists,y_cutoff, isodose=[], body_nam
             add_N = True
             if z in all_z_slices or (not reverse_z and z>min(all_z_slices)) or (reverse_z and z<min(all_z_slices)):
                 if y < y_cutoff:
-                    if z==137:
-                        print(y)
+                    # if z==137:
+                    #     print(y)
                     y = y_cutoff
 #                     print(z,z_prev)
 #                     if True:#z != z_prev:
@@ -163,8 +259,8 @@ def generate_anon_body(dict_contours_body,z_lists,y_cutoff, isodose=[], body_nam
             x_prev = x
             z_prev = z
 
-        if z==137:
-            print(slice)
+        # if z==137:
+        #     print(slice)
         full_stack_N.append(slice)
 
     return full_stack_N
@@ -196,12 +292,13 @@ def get_RS(patient_path, CT_file):
     RS = dcm.read_file(os.path.join(image_path,RS_file))
 
     #TO DO:load dose and RP fiels
-    return RS
+    return RS,RS_file
 
 def init_data(patient_path, CT_file, RS):
 
     slices = [dcm.read_file(PATH+patient+'/'+CT_file + '/'+ s) for s in os.listdir(PATH+patient+'/'+CT_file) if s[0:2] =='CT']
     CT_dcm = slices[0]
+    # print(CT_dcm)
     # Order slices
     slices.sort(key = lambda x: (x.InstanceNumber))
     image = get_pixels_hu(slices)
@@ -255,7 +352,7 @@ def get_eye_contours(RS,start_x,start_y,start_z,z_spacing,pixel_spacing):
 
     y_cutoff = ((max_y-min_y)/2+min_y)
 
-    return y_cutoff, z_lists
+    return y_cutoff, z_lists, y_cutoff_roi, z_smg
 
 
 
@@ -264,7 +361,7 @@ def get_first_CT(patient_path):
     CT_list = [d for d in os.listdir(patient_path) if d[9:11] == 'CT' and len(d) == 23]
     
     CT_list.sort(key=lambda x: datetime.strptime(x[12:], "%d_%b_%Y"))
-
+    print(CT_list[0])
     return CT_list[0]
 
 def anon_dicom(anon,slices,slope=1.0,intercept=-1000):
@@ -273,12 +370,12 @@ def anon_dicom(anon,slices,slope=1.0,intercept=-1000):
     # anon_rev = reverse_pixels_hu(anon, slices)
     # slope = 1.0
     # intercept = -1000
-    print(slices_copy[0].pixel_array)
-    print("anon")
-    print(anon[0])
-    print("anon-inter")
-    print(anon[0] - intercept)
-    print(slices_copy[0].RescaleIntercept)
+    # print(slices_copy[0].pixel_array)
+    # print("anon")
+    # print(anon[0])
+    # print("anon-inter")
+    # print(anon[0] - intercept)
+    # print(slices_copy[0].RescaleIntercept)
     # print(anon_rev[0])
     for i,slice in enumerate(slices_copy):
         slices_copy[i].PixelData = ((anon[i]-intercept)).tobytes() #NOTE: divide by SLOPE IS FUCKED
@@ -294,16 +391,43 @@ def save_dicom(slices,save_path,patient, CT_file):
             os.makedirs(save_path+patient+'/'+CT_file)
         slice.save_as(save_path+patient+'/'+CT_file+'/'+'CT.'+slice.SOPInstanceUID+'.dcm')
     
+def save_RT_struct(RS, RS_file,contour_stack,save_path,patient,CT_file):
+    #TODO: make it choose roi name, putting body for now
+    for i, seq in enumerate(RS.StructureSetROISequence):
+        if seq.ROIName == 'BODY':
+                index = i
+                break
+    
+    dict_stack = {}
+    for row in contour_stack:
+        dict_stack[row[2]] = row
 
-def run_anonymization(PATH,patient,save_path,keywords_keep = []):
+    for i, ROI_contour_seq in enumerate(RS.ROIContourSequence[index].ContourSequence):
+        z_ref = ROI_contour_seq.ContourData[2] 
+        if z_ref not in list(dict_stack.keys()):
+            print("******",z_ref,"not in dict")
+
+        print(z_ref,dict_stack(z_ref))
+
+        RS.ROIContourSequence[index].ContourSequence[i].ContourData = dict_stack[z_ref]
+
+    RS.save_as(os.path.join(save_path,patient,CT_file,RS_file))
+        # contour_coords.append(ROI_contour_seq.ContourData)
+
+
+def run_anonymization(PATH,patient,save_path,keywords_keep = [],CT_name=''):
     patient_path = os.path.join(PATH,patient)
-    CT_file = get_first_CT(patient_path)
-    RS = get_RS(patient_path, CT_file)
+    if len(CT_name)==0:
+        CT_file = get_first_CT(patient_path)
+    else:
+        CT_file = CT_name
+    RS,RS_file = get_RS(patient_path, CT_file)
+    # print(RS.ROIContourSequence[0].ContourSequence)
     #TODO: fixx dreadful return below to global var
     slices,image,reverse_z, start_x, start_y, start_z, pixel_spacing, z_spacing, spacing,origin = init_data(patient_path, CT_file, RS)
-    print(image[0])
+    # print(image[0])
 
-    y_cutoff,z_lists =  get_eye_contours(RS,start_x,start_y,start_z,z_spacing,pixel_spacing)
+    y_cutoff,z_lists,y_cutoff_roi,z_smg =  get_eye_contours(RS,start_x,start_y,start_z,z_spacing,pixel_spacing)
 
 
     if len(keywords_keep) == 0:
@@ -318,11 +442,30 @@ def run_anonymization(PATH,patient,save_path,keywords_keep = []):
 
 
     anon = generate_anon_image(image,z_lists,spacing,start_z,y_cutoff,reverse_z=reverse_z,contours_to_keep=dict_contours_keep,origin=origin)
-    print("anon")
-    print(anon[0])
+    # print("anon")
+    # print(anon[0])
     new_dicom = anon_dicom(anon, slices)
     save_dicom(new_dicom,save_path,patient,CT_file)
 
+    body_names = find_ROI_names(RS,'body')
+    print(body_names)
+    dict_contours_body,_ = get_all_ROI_contours([body_names[0]],RS)
+    # print(len(dict_contours_body['BODY']))
+    # print("******************")
+
+    full_stack_N = generate_anon_body(dict_contours_body,z_lists=z_lists,y_cutoff=y_cutoff_roi,reverse_z=reverse_z,contours_to_keep=dict_contours_keep)
+    # for slice in full_stack_N:
+    #     if slice[2] == z_smg:
+    # #         print(slice)
+    #         break
+    # x_new_body = slice[::3] 
+    # y_new_body = slice[1::3] 
+    # z_new_body =slice[2::3] 
+    # x_new, y_new, z_new = xyz_to_image_coords(x_new_body,y_new_body,z_new_body,spacing,origin)
+
+    # print(len(full_stack_N))
+    save_RT_struct(RS, RS_file,full_stack_N,save_path,patient,CT_file)
+    # print(RS)
     # dict_contours_body,_ = get_all_ROI_contours(['BODY'],RS)
 
 
@@ -347,13 +490,14 @@ if __name__ == "__main__":
     PATH = config["path"]
     keywords_keep = config["contours_to_keep"]
     save_path = config["save_path"]
+    CT_name = config["CT_name"]
 
 
 
     for patient in config["patient_list"]:
         patient = str(patient)
         if os.path.exists(PATH+patient):
-            run_anonymization(PATH,patient, save_path,keywords_keep)
+            run_anonymization(PATH,patient, save_path,keywords_keep,CT_name)
         else:   
             print("Patient directory "+ PATH+patient + " does not exist.")
     
