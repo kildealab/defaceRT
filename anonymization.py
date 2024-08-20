@@ -1,13 +1,15 @@
 
 import os, time, sys
-from datetime import datetime
+# from datetime import datetime
 import pydicom as dcm
 import numpy as np
-from scipy import interpolate
 
-sys.path.append('../')
-from Slice_Selection.slice_selection import *
+import cv2
 
+# sys.path.append('../')
+# from Slice_Selection.slice_selection import *
+# from tools import find_ROI_names, get_first_CT, get_RS, get_pixels_hu, get_eye_contours, get_all_ROI_contours, get_contour_from_ROI_name, get_avg_ROI_z_and_slice
+from tools import *
 
 # to do, fix z mess for when its revesrsed
 def generate_anon_image(image,z_lists,spacing, start_z,y_cutoff, cut_above = True,isodose=[], contours_to_keep = {},origin=[0,0,0],reverse_z=False):
@@ -289,18 +291,68 @@ def save_RT_struct(RS, RS_file,contour_stack,save_path,patient,CT_file):
                 break
     
     dict_stack = {}
-    for row in contour_stack:
-        dict_stack[row[2]] = row
+    z_s = []
+    z_refs = []
+    
+    # print("CONTOUR STACK HERE")
+    # print(contour_stack)
+    # print("END OF CONTOUR STACK")
 
+    for row in contour_stack:
+        z_s.append(row[2])
+        dict_stack[row[2]] = row
+        if row[2] == -545:
+            print("******************************************")
+            print("z-s after cropping")
+            print(row)
+            print("******************************************")
+
+    z_s_done =[]
     for i, ROI_contour_seq in enumerate(RS.ROIContourSequence[index].ContourSequence):
         z_ref = ROI_contour_seq.ContourData[2] 
+        z_refs.append(z_ref)
+        if z_ref == -545:
+            print("******************************************")
+            print("z-refs")
+            print(ROI_contour_seq.ContourData)
+            print(ROI_contour_seq)
+            print("******************************************")
         if z_ref not in list(dict_stack.keys()):
             print("******",z_ref,"not in dict")
 
-        print(z_ref,dict_stack(z_ref))
+        replacement_contour = []
+        for row in contour_stack:
+            if z_ref == row[2]:
+                replacement_contour = row
+                contour_stack.remove(row)
+                z_s_done.append(z_ref)
+                continue
+        if len(replacement_contour)==0:
+            print("******",z_ref,"not in dict")
 
-        RS.ROIContourSequence[index].ContourSequence[i].ContourData = dict_stack[z_ref]
 
+        # RS.ROIContourSequence[index].ContourSequence[i].ContourData = dict_stack[z_ref]
+
+
+    print(sorted(z_s))
+    print(sorted(z_refs))
+    print(sorted(z_s_done))
+    z_prev = sorted(z_s)[0]
+    for z in sorted(z_s[1:]):
+        if z - z_prev !=3 :
+            print("z ERROR",z, z_prev)
+        z_prev = z
+
+    z_prev = sorted(z_refs)[0]
+    for z in sorted(z_refs[1:]):
+        if z - z_prev !=3 :
+            print("z_ref ERROR",z, z_prev)
+        z_prev = z
+
+    print("len dict", len(dict_stack.keys()))
+    print("len zs", len(z_s))
+    print("len z_refs", len(z_refs))
+    print("len z_s_done", len(z_s_done))
     RS.save_as(os.path.join(save_path,patient,CT_file,RS_file))
         # contour_coords.append(ROI_contour_seq.ContourData)
 
