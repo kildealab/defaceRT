@@ -301,28 +301,32 @@ def save_RT_struct(RS, RS_file,contour_stack,save_path,patient,CT_file):
     for row in contour_stack:
         z_s.append(row[2])
         dict_stack[row[2]] = row
-        if row[2] == -545:
-            print("******************************************")
-            print("z-s after cropping")
-            print(row)
-            print("******************************************")
+        # if row[2] == -545:
+            # print("******************************************")
+            # print("z-s after cropping")
+            # print(row)
+            # print("******************************************")
 
     z_s_done =[]
     for i, ROI_contour_seq in enumerate(RS.ROIContourSequence[index].ContourSequence):
         z_ref = ROI_contour_seq.ContourData[2] 
         z_refs.append(z_ref)
-        if z_ref == -545:
-            print("******************************************")
-            print("z-refs")
-            print(ROI_contour_seq.ContourData)
-            print(ROI_contour_seq)
-            print("******************************************")
+        # if z_ref == -545:
+            # print("******************************************")
+            # print("z-refs")
+            # print(ROI_contour_seq.ContourData)
+            # print(ROI_contour_seq)
+            # print("******************************************")
         if z_ref not in list(dict_stack.keys()):
             print("******",z_ref,"not in dict")
 
         replacement_contour = []
         for row in contour_stack:
-            if z_ref == row[2]:
+            if float(z_ref) == float(row[2]):
+                print("YES")
+                if int(row[2]) == int(-497):
+                    print(row)
+                    print("^^^^^497")
                 replacement_contour = row
                 contour_stack.remove(row)
                 z_s_done.append(z_ref)
@@ -331,6 +335,7 @@ def save_RT_struct(RS, RS_file,contour_stack,save_path,patient,CT_file):
             print("******",z_ref,"not in dict")
 
 
+        RS.ROIContourSequence[index].ContourSequence[i].ContourData = replacement_contour
         # RS.ROIContourSequence[index].ContourSequence[i].ContourData = dict_stack[z_ref]
 
 
@@ -396,10 +401,10 @@ def run_anonymization(PATH,patient,save_path,keywords_keep = [],CT_name=''):
     # print("******************")
 
     full_stack_N = generate_anon_body(dict_contours_body,z_lists=z_lists,y_cutoff=y_cutoff_roi,reverse_z=reverse_z,contours_to_keep=dict_contours_keep)
-    # for slice in full_stack_N:
-    #     if slice[2] == z_smg:
-    # #         print(slice)
-    #         break
+    for slice in full_stack_N:
+        if slice[2] == -497:#z_smg:
+            print(slice)
+            break
     # x_new_body = slice[::3] 
     # y_new_body = slice[1::3] 
     # z_new_body =slice[2::3] 
