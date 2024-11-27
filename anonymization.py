@@ -3,13 +3,72 @@ import os, time, sys
 # from datetime import datetime
 import pydicom as dcm
 import numpy as np
-
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
 import cv2
 
 # sys.path.append('../')
 # from Slice_Selection.slice_selection import *
 # from tools import find_ROI_names, get_first_CT, get_RS, get_pixels_hu, get_eye_contours, get_all_ROI_contours, get_contour_from_ROI_name, get_avg_ROI_z_and_slice
 from tools import *
+
+figure_list = []
+# def produce_pdfs():
+#     pdf_file = '/data/kayla/patients_scans.pdf'
+#     if os.path.exists(pdf_file):
+#         pdf_mode = 'w' 
+#     else: 
+#         pdf_mode = 'a' 
+#     pdf = PdfPages(pdf_file, mode=pdf_mode) # Plot the 3 views 
+
+# plot_3_views(slices, get_image_slice(start_z, np.mean(z_lists[0]), spacing), anon, patient=patient + ' ' + CT_file) 
+#     # Save the current figure to the PDF
+
+    # pdf.savefig() 
+    # plt.close()
+
+    # # # produce_pdfs()
+    # # if (i + 1) % batch_size == 0: 
+    # pdf.savefig(plt.figure()) # Add a blank page p
+    # df.close() # Close the current batch
+
+def plot_3_views(slices, slice_number=100,image=[],plot_cor=False,patient=''):
+    ps = slices[0].PixelSpacing
+    ss = slices[0].SliceThickness 
+    ax_aspect = ps[1]/ps[0]
+    sag_aspect = ps[1]/ss
+    cor_aspect = ss/ps[0]
+
+    # create 3D array
+    img_shape = list(slices[0].pixel_array.shape)
+    img_shape.append(len(slices))
+    img3d = np.zeros(img_shape)
+    
+    # fill 3D array with the images from the files
+    for i, s in enumerate(slices):
+        if len(image)==0:
+            img2d = s.pixel_array
+        else:
+            img2d = image[i]
+        img3d[:, :, i] = img2d
+
+    # plot 3 orthogonal slices
+    a1 = plt.subplot(2, 2, 1)
+    plt.imshow(img3d[:, :, slice_number],cmap='gray')
+    a1.set_aspect(ax_aspect)
+
+    plt.title(patient)
+
+    a2 = plt.subplot(2, 2, 2)
+    plt.imshow(img3d[:, img_shape[1]//2, :],cmap='gray')
+    a2.set_aspect(sag_aspect)
+    if plot_cor:
+        a3 = plt.subplot(2, 2, 3)
+        plt.imshow(img3d[img_shape[0]//2, :, :].T)
+        a3.set_aspect(cor_aspect)
+
+    figure_list.append(plt.figure())
+    # plt.show()
 
 # to do, fix z mess for when its revesrsed
 def generate_anon_image(image,z_lists,spacing, start_z,y_cutoff, cut_above = True,isodose=[], contours_to_keep = {},origin=[0,0,0],reverse_z=False):
@@ -81,9 +140,9 @@ def get_contour_curves(slices, all_z_slices, y_cutoff_roi):
                 
 
                 xy = [[xs,ys] for xs, ys in sorted(zip(xo, yo))]
-                print("xy",xy)
+                # print("xy",xy)
                 xs, ys = zip(*xy)
-                print("xs",xs)
+                # print("xs",xs)
 #                 x_prev = -1000
                 xs = list(xs)
                 ys = list(ys)
@@ -230,7 +289,7 @@ def generate_anon_body(dict_contours_body,z_lists,y_cutoff, isodose=[], body_nam
 
 def init_data(patient_path, CT_file, RS):
 
-    slices = [dcm.read_file(PATH+patient+'/'+CT_file + '/'+ s) for s in os.listdir(PATH+patient+'/'+CT_file) if s[0:2] =='CT']
+    slices = [dcm.read_file(patient_path+'/'+CT_file + '/'+ s) for s in os.listdir(patient_path+'/'+CT_file) if s[0:2] =='CT']
     CT_dcm = slices[0]
     # print(CT_dcm)
     # Order slices
@@ -323,10 +382,10 @@ def save_RT_struct(RS, RS_file,contour_stack,save_path,patient,CT_file):
         replacement_contour = []
         for row in contour_stack:
             if float(z_ref) == float(row[2]):
-                print("YES")
-                if int(row[2]) == int(-497):
-                    print(row)
-                    print("^^^^^497")
+                # print("YES")
+                # if int(row[2]) == int(-497):
+                #     print(row)
+                #     print("^^^^^497")
                 replacement_contour = row
                 contour_stack.remove(row)
                 z_s_done.append(z_ref)
@@ -334,35 +393,36 @@ def save_RT_struct(RS, RS_file,contour_stack,save_path,patient,CT_file):
         if len(replacement_contour)==0:
             print("******",z_ref,"not in dict")
 
-
-        RS.ROIContourSequence[index].ContourSequence[i].ContourData = replacement_contour
+        else:
+            RS.ROIContourSequence[index].ContourSequence[i].ContourData = replacement_contour
         # RS.ROIContourSequence[index].ContourSequence[i].ContourData = dict_stack[z_ref]
 
 
-    print(sorted(z_s))
-    print(sorted(z_refs))
-    print(sorted(z_s_done))
-    z_prev = sorted(z_s)[0]
-    for z in sorted(z_s[1:]):
-        if z - z_prev !=3 :
-            print("z ERROR",z, z_prev)
-        z_prev = z
+    # print(sorted(z_s))
+    # print(sorted(z_refs))
+    # print(sorted(z_s_done))
+    # z_prev = sorted(z_s)[0]
+    # for z in sorted(z_s[1:]):
+    #     if z - z_prev !=3 :
+    #         print("z ERROR",z, z_prev)
+    #     z_prev = z
 
-    z_prev = sorted(z_refs)[0]
-    for z in sorted(z_refs[1:]):
-        if z - z_prev !=3 :
-            print("z_ref ERROR",z, z_prev)
-        z_prev = z
+    # z_prev = sorted(z_refs)[0]
+    # for z in sorted(z_refs[1:]):
+    #     if z - z_prev !=3 :
+    #         print("z_ref ERROR",z, z_prev)
+    #     z_prev = z
 
-    print("len dict", len(dict_stack.keys()))
-    print("len zs", len(z_s))
-    print("len z_refs", len(z_refs))
-    print("len z_s_done", len(z_s_done))
-    RS.save_as(os.path.join(save_path,patient,CT_file,RS_file))
+    # print("len dict", len(dict_stack.keys()))
+    # print("len zs", len(z_s))
+    # print("len z_refs", len(z_refs))
+    # print("len z_s_done", len(z_s_done))
+    #todotoday - uncomment below
+    # RS.save_as(os.path.join(save_path,patient,CT_file,RS_file))
         # contour_coords.append(ROI_contour_seq.ContourData)
 
 
-def run_anonymization(PATH,patient,save_path,keywords_keep = [],CT_name=''):
+def run_anonymization(PATH,patient,save_path,keywords_keep = [],CT_name='',produce_pdf=True):
     patient_path = os.path.join(PATH,patient)
     if len(CT_name)==0:
         CT_file = get_first_CT(patient_path)
@@ -391,8 +451,26 @@ def run_anonymization(PATH,patient,save_path,keywords_keep = [],CT_name=''):
     anon = generate_anon_image(image,z_lists,spacing,start_z,y_cutoff,reverse_z=reverse_z,contours_to_keep=dict_contours_keep,origin=origin)
     # print("anon")
     # print(anon[0])
+
+    if produce_pdf:
+        # if i % batch_size == 0: # Open PDF for appending 
+        #     pdf_mode = 'w' if i == 0 else 'a' 
+        #     pdf = PdfPages(pdf_filename, mode=pdf_mode) # Plot the 3 views 
+        
+        plot_3_views(slices, get_image_slice(start_z, np.mean(z_lists[0]), spacing), anon, patient=patient + ' ' + CT_file) 
+            # Save the current figure to the PDF
+        # produce_pdfs()
+        # pdf.savefig() 
+        # plt.close()
+        
+        # # produce_pdfs()
+        # if (i + 1) % batch_size == 0: 
+        #     pdf.savefig(plt.figure()) # Add a blank page p
+        #     df.close() # Close the current batch
+
     new_dicom = anon_dicom(anon, slices)
-    save_dicom(new_dicom,save_path,patient,CT_file)
+    #todotoday - uncomment below
+    # save_dicom(new_dicom,save_path,patient,CT_file)
 
     body_names = find_ROI_names(RS,'body')
     print(body_names)
@@ -401,17 +479,18 @@ def run_anonymization(PATH,patient,save_path,keywords_keep = [],CT_name=''):
     # print("******************")
 
     full_stack_N = generate_anon_body(dict_contours_body,z_lists=z_lists,y_cutoff=y_cutoff_roi,reverse_z=reverse_z,contours_to_keep=dict_contours_keep)
-    for slice in full_stack_N:
-        if slice[2] == -497:#z_smg:
-            print(slice)
-            break
+    # for slice in full_stack_N:
+        # if slice[2] == -497:#z_smg:
+        #     print(slice)
+        #     break
     # x_new_body = slice[::3] 
     # y_new_body = slice[1::3] 
     # z_new_body =slice[2::3] 
     # x_new, y_new, z_new = xyz_to_image_coords(x_new_body,y_new_body,z_new_body,spacing,origin)
 
     # print(len(full_stack_N))
-    save_RT_struct(RS, RS_file,full_stack_N,save_path,patient,CT_file)
+    #todotoday - uncomment below
+    # save_RT_struct(RS, RS_file,full_stack_N,save_path,patient,CT_file)
     # print(RS)
     # dict_contours_body,_ = get_all_ROI_contours(['BODY'],RS)
 
@@ -438,17 +517,32 @@ if __name__ == "__main__":
     keywords_keep = config["contours_to_keep"]
     save_path = config["save_path"]
     CT_name = config["CT_name"]
+    produce_pdf = config['print_PDFs']
 
 
 
     for patient in config["patient_list"]:
+        print(patient)
         patient = str(patient)
         if os.path.exists(PATH+patient):
-            run_anonymization(PATH,patient, save_path,keywords_keep,CT_name)
+            try:
+                run_anonymization(PATH,patient, save_path,keywords_keep,CT_name,produce_pdf)
+            except Exception as e:
+                print("ERROR WITH PATIENT",patient,":",e)
+                if produce_pdf:
+                    plt.subplots(figsize=(10,2))
+                    plt.title(patient,"ERROR")
+                    plt.text(0.5,0.5,e,dict(ha='center',va='center',fontsize=14,color='blue'))
+                    figure_list.append(plt.figure())
         else:   
             print("Patient directory "+ PATH+patient + " does not exist.")
     
-
+    pdf = PdfPages("output.pdf")
+    fig_nums = plt.get_fignums()
+    figs = [plt.figure(n) for n in fig_nums]
+    for fig in figs:
+        pdf.savefig(fig,bbox_inches='tight')
+    pdf.close()
 
     # if sys.argv[1:] == "all"
     # for patient in sys.argv[1:]:
