@@ -35,7 +35,7 @@ figure_list = []
 
 def plot_all_contours(RS,image,slice_num,origin,spacing,ignore_terms=[],legend=False):
     contours_not_on_slice = []
-    
+    plt.subplot(2, 2, 3)
     all_ROIs = [r for r in find_ROI_names(RS)]
     for term in ignore_terms:
         all_ROIs = [r for r in all_ROIs if term.lower() not in r.lower()]
@@ -68,7 +68,7 @@ def plot_all_contours(RS,image,slice_num,origin,spacing,ignore_terms=[],legend=F
 #             print(roi,"not on slice.")
         
     if legend:
-        plt.legend(prop={'size': 12})
+        plt.legend(prop={'size': 3})
     print("Other contours not on slice:",contours_not_on_slice)
     
     
@@ -109,7 +109,7 @@ def plot_3_views(slices, slice_number=100,image=[],plot_cor=False,patient=''):
         plt.imshow(img3d[img_shape[0]//2, :, :].T)
         a3.set_aspect(cor_aspect)
 
-    figure_list.append(plt.figure())
+    # figure_list.append(plt.figure())
     # plt.show()
 
 # to do, fix z mess for when its revesrsed
