@@ -32,6 +32,48 @@ figure_list = []
     # pdf.savefig(plt.figure()) # Add a blank page p
     # df.close() # Close the current batch
 
+
+def plot_all_contours(RS,image,slice_num,origin,spacing,ignore_terms=[],legend=False):
+    contours_not_on_slice = []
+    
+    all_ROIs = [r for r in find_ROI_names(RS)]
+    for term in ignore_terms:
+        all_ROIs = [r for r in all_ROIs if term.lower() not in r.lower()]
+    
+#     dict_contours, z_lists_b = get_all_ROI_contours(all_ROIs, RS)
+    colours= get_ROI_colour_dict(RS)
+    z_slice = image_to_xyz_coords_single(slice_num, spacing[2],origin[2])[0]
+#     xyz_to_image_coords_single(X,spacing,origin):
+    print(z_slice)
+    
+    
+    plt.imshow(image[slice_num],cmap='gray')
+    for roi in all_ROIs:
+#         print(roi)
+        dict_contours, z_lists = get_all_ROI_contours([roi], RS)
+#         if len(dict_contours) >1:
+        for i,r in enumerate(dict_contours):
+            if r == roi:
+                break
+        try:       
+            roi_slice = get_ROI_slice(z_slice,z_lists[i])
+#             print(len(roi_slice))
+            
+            c =colours[roi]
+            for s in roi_slice:
+                roi_x, roi_y = get_ROI_pixel_array(dict_contours[roi][s],origin[0],origin[1],spacing)
+                plt.plot(roi_x,roi_y,'-',color=  (c[0]/255,c[1]/255,c[2]/255),label=roi)
+        except Exception as e:
+            contours_not_on_slice.append(roi)
+#             print(roi,"not on slice.")
+        
+    if legend:
+        plt.legend(prop={'size': 12})
+    print("Other contours not on slice:",contours_not_on_slice)
+    
+    
+
+
 def plot_3_views(slices, slice_number=100,image=[],plot_cor=False,patient=''):
     ps = slices[0].PixelSpacing
     ss = slices[0].SliceThickness 
@@ -101,6 +143,7 @@ def generate_anon_image(image,z_lists,spacing, start_z,y_cutoff, cut_above = Tru
                 cont_xy = np.array([tuple([int(x),int(y)]) for x,y in zip(X,Y)])
                 cont_xy = cont_xy.reshape((-1,1,2))
                 cv2.drawContours(mask[slice_num],[cont_xy],-1,1, -1)
+                #TO DO IUSE THIS TOCROP OTEHR CINTIURS
 
   # TO DO: ISODOSE BELOW      
     # print("anon*MASK************")    
@@ -420,6 +463,7 @@ def save_RT_struct(RS, RS_file,contour_stack,save_path,patient,CT_file):
     #todotoday - uncomment below
     # RS.save_as(os.path.join(save_path,patient,CT_file,RS_file))
         # contour_coords.append(ROI_contour_seq.ContourData)
+    return RS
 
 
 def run_anonymization(PATH,patient,save_path,keywords_keep = [],CT_name='',produce_pdf=True):
@@ -433,7 +477,7 @@ def run_anonymization(PATH,patient,save_path,keywords_keep = [],CT_name='',produ
     #TODO: fixx dreadful return below to global var
     slices,image,reverse_z, start_x, start_y, start_z, pixel_spacing, z_spacing, spacing,origin = init_data(patient_path, CT_file, RS)
     # print(image[0])
-
+    origin = [start_x,start_y,start_z]
     y_cutoff,z_lists,y_cutoff_roi,z_smg =  get_eye_contours(RS,start_x,start_y,start_z,z_spacing,pixel_spacing)
 
 
@@ -452,21 +496,7 @@ def run_anonymization(PATH,patient,save_path,keywords_keep = [],CT_name='',produ
     # print("anon")
     # print(anon[0])
 
-    if produce_pdf:
-        # if i % batch_size == 0: # Open PDF for appending 
-        #     pdf_mode = 'w' if i == 0 else 'a' 
-        #     pdf = PdfPages(pdf_filename, mode=pdf_mode) # Plot the 3 views 
-        
-        plot_3_views(slices, get_image_slice(start_z, np.mean(z_lists[0]), spacing), anon, patient=patient + ' ' + CT_file) 
-            # Save the current figure to the PDF
-        # produce_pdfs()
-        # pdf.savefig() 
-        # plt.close()
-        
-        # # produce_pdfs()
-        # if (i + 1) % batch_size == 0: 
-        #     pdf.savefig(plt.figure()) # Add a blank page p
-        #     df.close() # Close the current batch
+
 
     new_dicom = anon_dicom(anon, slices)
     #todotoday - uncomment below
@@ -490,7 +520,7 @@ def run_anonymization(PATH,patient,save_path,keywords_keep = [],CT_name='',produ
 
     # print(len(full_stack_N))
     #todotoday - uncomment below
-    # save_RT_struct(RS, RS_file,full_stack_N,save_path,patient,CT_file)
+    RS_new = save_RT_struct(RS, RS_file,full_stack_N,save_path,patient,CT_file)
     # print(RS)
     # dict_contours_body,_ = get_all_ROI_contours(['BODY'],RS)
 
@@ -506,6 +536,24 @@ def run_anonymization(PATH,patient,save_path,keywords_keep = [],CT_name='',produ
     # x_new, y_new, z_new = xyz_to_image_coords(x_new_body,y_new_body,z_new_body,spacing,origin)
 
     # generate_anon_image(image,z_lists,spacing, y_cutoff,reverse_z=False,contours_to_keep=dict_contours_keep,origin=origin)
+
+    if produce_pdf:
+        # if i % batch_size == 0: # Open PDF for appending 
+        #     pdf_mode = 'w' if i == 0 else 'a' 
+        #     pdf = PdfPages(pdf_filename, mode=pdf_mode) # Plot the 3 views 
+        
+        plot_3_views(slices, get_image_slice(start_z, np.mean(z_lists[0]), spacing), anon, patient=patient + ' ' + CT_file) 
+        plot_all_contours(RS_new,anon,get_image_slice(start_z, np.mean(z_lists[0]),spacing),origin,spacing)
+            # Save the current figure to the PDF
+        # produce_pdfs()
+        # pdf.savefig() 
+        # plt.close()
+        
+        # # produce_pdfs()
+        # if (i + 1) % batch_size == 0: 
+        #     pdf.savefig(plt.figure()) # Add a blank page p
+        #     df.close() # Close the current batch
+
 
 
 if __name__ == "__main__":
@@ -531,7 +579,7 @@ if __name__ == "__main__":
                 print("ERROR WITH PATIENT",patient,":",e)
                 if produce_pdf:
                     plt.subplots(figsize=(10,2))
-                    plt.title(patient,"ERROR")
+                    plt.title(patient+" ERROR")
                     plt.text(0.5,0.5,e,dict(ha='center',va='center',fontsize=14,color='blue'))
                     figure_list.append(plt.figure())
         else:   

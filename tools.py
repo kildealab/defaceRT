@@ -200,9 +200,26 @@ def get_avg_ROI_z_and_slice(z_lists):
 
     return roi_slice, z_smg
 
+def get_ROI_colour_dict(RS):
+    index_colour_dict = {}
+    for ROI_contour_seq in RS.ROIContourSequence:
+        index_colour_dict[ROI_contour_seq.ReferencedROINumber] = ROI_contour_seq.ROIDisplayColor
+   
+    name_colour_dict = {}
+    for seq in RS.StructureSetROISequence:
+        name_colour_dict[seq.ROIName] = index_colour_dict[seq.ROINumber]
 
+    return name_colour_dict
 
-
+def image_to_xyz_coords_single(X,spacing,origin):
+    if type(X) is not list:
+        X = [X]
+    X_new = []
+    for x in X:
+        X_new.append(x*spacing+origin)
+        
+    return X_new
+    d
 def get_image_slice(start_z, z_smg, spacing):
     img_slice = int((abs(start_z - z_smg)/spacing[2]))
     return img_slice
