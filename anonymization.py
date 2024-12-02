@@ -35,7 +35,7 @@ figure_list = []
 
 def plot_all_contours(RS,image,slice_num,origin,spacing,ignore_terms=[],legend=False):
     contours_not_on_slice = []
-    # plt.subplot(2, 2, 3)
+    plt.subplot(2, 2, 3)
     all_ROIs = [r for r in find_ROI_names(RS)]
     for term in ignore_terms:
         all_ROIs = [r for r in all_ROIs if term.lower() not in r.lower()]
@@ -107,10 +107,10 @@ def plot_3_views(slices, slice_number=100,image=[],plot_cor=False,patient=''):
     a2 = plt.subplot(2, 2, 2)
     plt.imshow(img3d[:, img_shape[1]//2, :],cmap='gray')
     a2.set_aspect(sag_aspect)
-    if plot_cor:
-        a3 = plt.subplot(2, 2, 3)
-        plt.imshow(img3d[img_shape[0]//2, :, :].T)
-        a3.set_aspect(cor_aspect)
+    # if plot_cor:
+    #     a3 = plt.subplot(2, 2, 3)
+    #     plt.imshow(img3d[img_shape[0]//2, :, :].T)
+    #     a3.set_aspect(cor_aspect)
 
     # figure_list.append(plt.figure())
     # plt.show()
@@ -335,20 +335,45 @@ def generate_anon_body(dict_contours_body,z_lists,y_cutoff, isodose=[], body_nam
 
 def generate_anon_dose(RD, mask,CT_spacing,CT_origin,CT_size,img_slice=100):
     dose_array = RD.pixel_array
+    original_dose_size = dose_array.shape
+
     # no need to scale to Gy since just applying mask, but to scale: dose_array * RD.DoseGridScaling
     dose_spacing = [RD.PixelSpacing[0],RD.PixelSpacing[1],RD.GridFrameOffsetVector[1]-RD.GridFrameOffsetVector[0]]
 
-    resampled_dose = resample_dose_map_3D(dose_array,CT_spacing, dose_spacing) 
-    resized_dose = resize_dose_map_3D(resampled_dose,CT_size,CT_spacing, RD.ImagePositionPatient,CT_origin)
-    anon_dose = resized_dose * mask
 
-    original_dose_size = dose_array.shape
-    desized_dose = reverse_resize_dose_map_3D(anon_dose,original_dose_size,CT_spacing, CT_origin,RD.ImagePositionPatient)
-    desampled_dose = resample_dose_map_3D(desized_dose, dose_spacing,CT_spacing)
+
+    scaling_factors = [old/new for old, new in zip(dose_spacing,CT_spacing)]
+    original_size = np.array([len(dose_array[0]), len(dose_array[0][0]),len(dose_array)]) # change to 3D
+    
+    print("OG SIZE",original_size)
+    new_size_xyz = np.round(original_size*scaling_factors).astype(int)
+    new_size = [new_size_xyz[2],new_size_xyz[0],new_size_xyz[1]]
+
+
+    # rewrite to instead just resize/resample mask to dose map -- might lose info if changing dose map to image and back
+    resized_mask = reverse_resize_dose_map_3D(mask,new_size,CT_spacing, CT_origin,RD.ImagePositionPatient)
+    print("*******")
+    print(original_dose_size,CT_spacing, CT_origin,RD.ImagePositionPatient)
+    print(resized_mask.shape)
+    print("*******")
+    resampled_mask = resample_dose_map_3D(resized_mask, dose_spacing,CT_spacing)
+    defaced_dose = dose_array * resampled_mask
 
     plt.subplot(2,2,4)
-    plt.imshow(desampled_dose[img_slice],cmap=plt.cm.plasma)
-    return desampled_dose
+    plt.imshow(defaced_dose[img_slice],cmap=plt.cm.plasma)
+    return defaced_dose
+
+    # resampled_dose = resample_dose_map_3D(dose_array,CT_spacing, dose_spacing) 
+    # resized_dose = resize_dose_map_3D(resampled_dose,CT_size,CT_spacing, RD.ImagePositionPatient,CT_origin)
+    # anon_dose = resized_dose * mask
+
+    # original_dose_size = dose_array.shape
+    # desized_dose = reverse_resize_dose_map_3D(anon_dose,original_dose_size,CT_spacing, CT_origin,RD.ImagePositionPatient)
+    # desampled_dose = resample_dose_map_3D(desized_dose, dose_spacing,CT_spacing)
+
+    # plt.subplot(2,2,4)
+    # plt.imshow(desampled_dose[img_slice],cmap=plt.cm.plasma)
+    # return desampled_dose
 
 
 def init_data(patient_path, CT_file, RS):
