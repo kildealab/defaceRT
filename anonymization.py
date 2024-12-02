@@ -35,7 +35,7 @@ figure_list = []
 
 def plot_all_contours(RS,image,slice_num,origin,spacing,ignore_terms=[],legend=False):
     contours_not_on_slice = []
-    plt.subplot(2, 2, 3)
+    # plt.subplot(2, 2, 3)
     all_ROIs = [r for r in find_ROI_names(RS)]
     for term in ignore_terms:
         all_ROIs = [r for r in all_ROIs if term.lower() not in r.lower()]
@@ -44,23 +44,26 @@ def plot_all_contours(RS,image,slice_num,origin,spacing,ignore_terms=[],legend=F
     colours= get_ROI_colour_dict(RS)
     z_slice = image_to_xyz_coords_single(slice_num, spacing[2],origin[2])[0]
 #     xyz_to_image_coords_single(X,spacing,origin):
-    print(z_slice)
+    # print(z_slice)
     
     
     plt.imshow(image[slice_num],cmap='gray')
     for roi in all_ROIs:
-#         print(roi)
+        # print(roi)
         dict_contours, z_lists = get_all_ROI_contours([roi], RS)
+        # print("X")
 #         if len(dict_contours) >1:
         for i,r in enumerate(dict_contours):
             if r == roi:
                 break
         try:       
             roi_slice = get_ROI_slice(z_slice,z_lists[i])
-#             print(len(roi_slice))
+            # print(len(roi_slice))
             
             c =colours[roi]
             for s in roi_slice:
+                # print(s)
+                # print("**")
                 roi_x, roi_y = get_ROI_pixel_array(dict_contours[roi][s],origin[0],origin[1],spacing)
                 plt.plot(roi_x,roi_y,'-',color=  (c[0]/255,c[1]/255,c[2]/255),label=roi)
         except Exception as e:
@@ -68,8 +71,8 @@ def plot_all_contours(RS,image,slice_num,origin,spacing,ignore_terms=[],legend=F
 #             print(roi,"not on slice.")
         
     if legend:
-        plt.legend(prop={'size': 3})
-    print("Other contours not on slice:",contours_not_on_slice)
+        plt.legend(prop={'size': 8})
+    # print("Other contours not on slice:",contours_not_on_slice)
     
     
 
@@ -151,8 +154,9 @@ def generate_anon_image(image,z_lists,spacing, start_z,y_cutoff, cut_above = Tru
     # print(mask)
     # print(mask*-1+1)
     # print(anon_image)
-    return anon_image*mask++(mask*-1+1)*(-1000)
+    return anon_image*mask++(mask*-1+1)*(-1000), mask
 
+# def deface_dose():
 
 def get_contour_curves(slices, all_z_slices, y_cutoff_roi):
     dict_curves = {}
@@ -329,6 +333,23 @@ def generate_anon_body(dict_contours_body,z_lists,y_cutoff, isodose=[], body_nam
 
     return full_stack_N
 
+def generate_anon_dose(RD, mask,CT_spacing,CT_origin,CT_size,img_slice=100):
+    dose_array = RD.pixel_array
+    # no need to scale to Gy since just applying mask, but to scale: dose_array * RD.DoseGridScaling
+    dose_spacing = [RD.PixelSpacing[0],RD.PixelSpacing[1],RD.GridFrameOffsetVector[1]-RD.GridFrameOffsetVector[0]]
+
+    resampled_dose = resample_dose_map_3D(dose_array,CT_spacing, dose_spacing) 
+    resized_dose = resize_dose_map_3D(resampled_dose,CT_size,CT_spacing, RD.ImagePositionPatient,CT_origin)
+    anon_dose = resized_dose * mask
+
+    original_dose_size = dose_array.shape
+    desized_dose = reverse_resize_dose_map_3D(anon_dose,original_dose_size,CT_spacing, CT_origin,RD.ImagePositionPatient)
+    desampled_dose = resample_dose_map_3D(desized_dose, dose_spacing,CT_spacing)
+
+    plt.subplot(2,2,4)
+    plt.imshow(desampled_dose[img_slice],cmap=plt.cm.plasma)
+    return desampled_dose
+
 
 def init_data(patient_path, CT_file, RS):
 
@@ -387,6 +408,7 @@ def save_dicom(slices,save_path,patient, CT_file):
     
 def save_RT_struct(RS, RS_file,contour_stack,save_path,patient,CT_file):
     #TODO: make it choose roi name, putting body for now
+    
     for i, seq in enumerate(RS.StructureSetROISequence):
         if seq.ROIName == 'BODY':
                 index = i
@@ -440,7 +462,19 @@ def save_RT_struct(RS, RS_file,contour_stack,save_path,patient,CT_file):
             RS.ROIContourSequence[index].ContourSequence[i].ContourData = replacement_contour
         # RS.ROIContourSequence[index].ContourSequence[i].ContourData = dict_stack[z_ref]
 
+    # remove eyes, lenses, corneas, more?
+    indices_remove = []
+    for i, seq in enumerate(RS.StructureSetROISequence):
+        if any(substring in seq.ROIName.lower() for substring in ('eye','globe','orbit','lens','cornea')):
+            print(seq.ROIName, i)
+            indices_remove.append(i)
 
+    for index in indices_remove:
+        print(index)
+        for i, ROI_contour_seq in enumerate(RS.ROIContourSequence[index].ContourSequence):
+            RS.ROIContourSequence[index].ContourSequence[i].ContourData = []
+
+                
     # print(sorted(z_s))
     # print(sorted(z_refs))
     # print(sorted(z_s_done))
@@ -473,13 +507,15 @@ def run_anonymization(PATH,patient,save_path,keywords_keep = [],CT_name='',produ
     else:
         CT_file = CT_name
     RS,RS_file = get_RS(patient_path, CT_file)
+    RD = find_dose_file(patient_path+'/'+CT_file)
     # print(RS.ROIContourSequence[0].ContourSequence)
     #TODO: fixx dreadful return below to global var
     slices,image,reverse_z, start_x, start_y, start_z, pixel_spacing, z_spacing, spacing,origin = init_data(patient_path, CT_file, RS)
     # print(image[0])
     origin = [start_x,start_y,start_z]
     y_cutoff,z_lists,y_cutoff_roi,z_smg =  get_eye_contours(RS,start_x,start_y,start_z,z_spacing,pixel_spacing)
-
+    CT_spacing = [pixel_spacing[0],pixel_spacing[1],z_spacing]
+    CT_size = [len(image[0]),len(image[0][0]),len(image)] #to do double check x y are correct positon
 
     if len(keywords_keep) == 0:
         dict_contours_keep = {}
@@ -492,10 +528,11 @@ def run_anonymization(PATH,patient,save_path,keywords_keep = [],CT_name='',produ
         dict_contours_keep,_ = get_all_ROI_contours(list_names_keep,RS)
 
 
-    anon = generate_anon_image(image,z_lists,spacing,start_z,y_cutoff,reverse_z=reverse_z,contours_to_keep=dict_contours_keep,origin=origin)
+    anon, mask = generate_anon_image(image,z_lists,spacing,start_z,y_cutoff,reverse_z=reverse_z,contours_to_keep=dict_contours_keep,origin=origin)
     # print("anon")
     # print(anon[0])
 
+    anon_dose = generate_anon_dose(RD, mask,CT_spacing,origin,CT_size)
 
 
     new_dicom = anon_dicom(anon, slices)
@@ -521,6 +558,7 @@ def run_anonymization(PATH,patient,save_path,keywords_keep = [],CT_name='',produ
     # print(len(full_stack_N))
     #todotoday - uncomment below
     RS_new = save_RT_struct(RS, RS_file,full_stack_N,save_path,patient,CT_file)
+
     # print(RS)
     # dict_contours_body,_ = get_all_ROI_contours(['BODY'],RS)
 
@@ -541,8 +579,9 @@ def run_anonymization(PATH,patient,save_path,keywords_keep = [],CT_name='',produ
         # if i % batch_size == 0: # Open PDF for appending 
         #     pdf_mode = 'w' if i == 0 else 'a' 
         #     pdf = PdfPages(pdf_filename, mode=pdf_mode) # Plot the 3 views 
-        
+        print("RS")
         plot_3_views(slices, get_image_slice(start_z, np.mean(z_lists[0]), spacing), anon, patient=patient + ' ' + CT_file) 
+        print("ploted NEW")
         plot_all_contours(RS_new,anon,get_image_slice(start_z, np.mean(z_lists[0]),spacing),origin,spacing)
             # Save the current figure to the PDF
         # produce_pdfs()
