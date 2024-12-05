@@ -153,8 +153,10 @@ def get_all_ROI_contours(list_ROIs,RS):
 #     print(list_ROIs)
 
     for roi_name in list_ROIs:
-
+        # print(roi_name)
         all_contours_ROI = get_contour_from_ROI_name(roi_name, RS)
+        if len(all_contours_ROI)==0 or len(all_contours_ROI[0])==0: # if contour is empty
+            return {},[]
         all_contours_ROI = sorted(all_contours_ROI, key=lambda x: x[2])
         dict_contours[roi_name] = all_contours_ROI
         z_lists.append(sorted([float(roi[2]) for roi in all_contours_ROI]))
@@ -219,7 +221,7 @@ def image_to_xyz_coords_single(X,spacing,origin):
         X_new.append(x*spacing+origin)
         
     return X_new
-    d
+    
 def get_image_slice(start_z, z_smg, spacing):
     img_slice = int((abs(start_z - z_smg)/spacing[2]))
     return img_slice
@@ -260,3 +262,178 @@ def get_ROI_slice(z_target,z_list):
 #             return slice_num
         slice_num +=1
     return slice_nums
+
+
+
+#new dose stuff
+
+def find_dose_file(CT_path):
+    dose_files = [f for f in os.listdir(CT_path) if 'RD' in f]
+    num_dose_files = len(dose_files)
+    
+    if num_dose_files == 0:
+        raise FileNotFoundError("ERROR: NO DOSE FILES FOUND")
+    
+    RD = dcm.read_file(CT_path+'/'+dose_files[0]) 
+    
+    if num_dose_files == 1:
+        return RD
+    
+    elif num_dose_files > 1:
+        
+        smallest_spacing = RD[0x0028, 0x0030]
+        
+        for dose_file in dose_files[1:]:
+            rd = dcm.read_file(CT_path+'/'+dose_file)
+            spacing = rd[0x0028, 0x0030]
+            
+            if spacing[0] <= smallest_spacing[0] and spacing[1] <= smallest_spacing[1]:
+                smallest_spacing = spacing
+                RD = rd 
+    return RD
+
+
+
+
+def resample_dose_map_2D(dose_map, new_spacing, old_spacing):
+
+    scaling_factors = [old/new for old, new in zip(old_spacing,new_spacing)]
+    original_size = np.array([len(dose_map), len(dose_map[0])]) # change to 3D
+    
+    new_size = np.round(original_size*scaling_factors).astype(int)
+    resampled_dose_map = np.zeros(new_size)
+
+    # to do make 3d
+    for i in range(new_size[0]):
+        for j in range(new_size[1]):
+
+            original_index = np.array([i,j])/scaling_factors
+            resampled_dose_map[i][j] = dose_map[int(original_index[0]), int(original_index[1])]            
+        
+    return resampled_dose_map
+
+
+def resample_dose_map_3D(dose_map, new_spacing, old_spacing):
+
+    scaling_factors = [old/new for old, new in zip(old_spacing,new_spacing)]
+    original_size = np.array([len(dose_map[0]), len(dose_map[0][0]),len(dose_map)]) # change to 3D
+    
+    print("OG SIZE",original_size)
+    new_size_xyz = np.round(original_size*scaling_factors).astype(int)
+    new_size = [new_size_xyz[2],new_size_xyz[0],new_size_xyz[1]]
+    print("NEW SIZE",new_size)
+    print("scaling factors",scaling_factors)
+    print(original_size*scaling_factors)
+    resampled_dose_map = np.zeros(new_size)
+#     return resampled_dose_map
+    print(resampled_dose_map.shape)
+
+    # to do make 3d
+    for k in range(new_size[0]):
+        for i in range(new_size[1]):
+            for j in range(new_size[2]):
+           
+#                 print(k)
+                original_index = (np.array([i,j,k])/scaling_factors).astype(int)
+#                 print(original_index)
+#                 print(int(original_index[2]), int(original_index[0]),int(original_index[1]))
+                resampled_dose_map[k][i][j] = dose_map[ int(original_index[2]), int(original_index[0]),int(original_index[1])]            
+
+    return resampled_dose_map
+
+
+def resize_dose_map(dose_map,new_size, spacing, new_origin, old_origin,default=0):
+
+    resized_dose_map = np.zeros(new_size)
+
+    x_img = int((new_origin[0]-old_origin[0])/spacing[0])
+    y_img = int((new_origin[1]-old_origin[1])/spacing[1])
+    # print(x_img,y_img)
+    # print((new_origin[0]-old_origin[0])/spacing[0],(new_origin[1]-old_origin[1])/spacing[1])
+    # print("X",x_img, len(dose_map[0]))
+    # print("Y",y_img, len(dose_map))
+    # print(x_img+len(dose_map[0]))
+    
+    y_end = y_img+len(dose_map)
+    x_end = x_img+len(dose_map[0])
+    
+
+
+    print('xy ends',x_end,y_end)
+    if y_end > 512:
+        dose_map = dose_map[:(new_size[1]-y_end)]
+    if x_end > 512:
+        dose_map = dose_map[:,:(new_size[0]-x_end)]
+          
+    resized_dose_map[y_img:y_end,x_img:x_end] = dose_map
+    return resized_dose_map
+
+def resize_dose_map_3D(dose_map,new_size, spacing, new_origin, old_origin,default=0):
+    
+    new_size_zxy = new_size[2],new_size[0],new_size[1]
+    print(new_size_zxy)
+    resized_dose_map = np.zeros(new_size_zxy)
+    z_image = int((new_origin[2] - old_origin[2])/spacing[2])
+    print("z_img",z_image, (new_origin[2] - old_origin[2])/spacing[2])
+    
+    len_dose_map = len(dose_map) 
+    print("len dose map",len_dose_map)
+    # Crop dose map if starting index is negative
+    if z_image < 0:       
+        z_image = 0
+        len_dose_map = len_dose_map + z_image
+    print("len dose map after < 0",len_dose_map)     
+    
+    for i,resized_index in enumerate(range(z_image,z_image+len_dose_map)):  # added zimage + lendose map. idk anymore
+        print(i,resized_index)
+        print("new or (DOSE)", new_origin[2])
+        print("old or (IMG)", old_origin[2])
+        print("spacing", spacing)
+        resized_dose_map[resized_index] = resize_dose_map(dose_map[i],[new_size[0],new_size[1]],spacing,new_origin,old_origin,default=0)
+    
+    return resized_dose_map
+
+
+
+def reverse_resize_dose_map_3D(dose_map,new_size, spacing, new_origin, old_origin,default=0):
+    new_size_zxy = new_size[0],new_size[1],new_size[2]
+    # print(new_size_zxy)
+    resized_dose_map = np.zeros(new_size_zxy)
+    z_image = int((new_origin[2] - old_origin[2])/spacing[2])
+    # print("z_img",z_image, (new_origin[2] - old_origin[2])/spacing[2])
+    
+    len_dose_map = len(dose_map)
+    # print("len dose map",len_dose_map)
+    # Crop dose map if starting index is negative
+    if z_image < 0:       
+        z_image = 0
+        len_dose_map = len_dose_map + z_image
+    # print("len dose map after < 0",len_dose_map)    
+    
+    z_start = int((new_origin[2]-old_origin[2])/spacing[2])
+    
+    for i,resized_index in enumerate(range(z_image,z_image+new_size[0])):  # added zimage + lendose map. idk anymore
+        # if i > lennew_size[0]
+        # print(i,resized_index)
+        # print("new or (DOSE)", new_origin[2])
+        # print("old or (IMG)", old_origin[2])
+        # print("spacing", spacing)
+        resized_dose_map[resized_index] = reverse_resize_dose_map(dose_map[i],[new_size[1],new_size[2]],spacing,new_origin,old_origin)
+    
+    return resized_dose_map
+
+def reverse_resize_dose_map(dose_map,new_size, spacing,  old_origin,new_origin):
+    resized_dose_map = np.zeros(new_size)
+
+    x_start = int((new_origin[0]-old_origin[0])/spacing[0])
+    y_start = int((new_origin[1]-old_origin[1])/spacing[1])
+  
+    
+    y_end = y_start+new_size[0]#len(dose_map)
+    x_end = x_start+new_size[1]#len(dose_map[0])
+        
+    resized_dose_map = dose_map[y_start:y_end,x_start:x_end]
+    
+
+
+    return resized_dose_map

@@ -542,6 +542,7 @@ def run_anonymization(PATH,patient,save_path,keywords_keep = [],CT_name='',produ
     CT_spacing = [pixel_spacing[0],pixel_spacing[1],z_spacing]
     CT_size = [len(image[0]),len(image[0][0]),len(image)] #to do double check x y are correct positon
 
+    img_slice = get_image_slice(start_z, np.mean(z_lists[0]), spacing)
     if len(keywords_keep) == 0:
         dict_contours_keep = {}
     else:
@@ -557,7 +558,13 @@ def run_anonymization(PATH,patient,save_path,keywords_keep = [],CT_name='',produ
     # print("anon")
     # print(anon[0])
 
-    anon_dose = generate_anon_dose(RD, mask,CT_spacing,origin,CT_size)
+
+    try:
+        anon_dose = generate_anon_dose(RD, mask,CT_spacing,origin,CT_size,img_slice)
+    except Exception as e:
+        plt.subplot(2,2,4)
+        # plt.title(patient+" ERROR")
+        plt.text(0.5,0.5,e,dict(ha='center',va='center',fontsize=14,color='blue'))
 
 
     new_dicom = anon_dicom(anon, slices)
@@ -605,7 +612,7 @@ def run_anonymization(PATH,patient,save_path,keywords_keep = [],CT_name='',produ
         #     pdf_mode = 'w' if i == 0 else 'a' 
         #     pdf = PdfPages(pdf_filename, mode=pdf_mode) # Plot the 3 views 
         print("RS")
-        plot_3_views(slices, get_image_slice(start_z, np.mean(z_lists[0]), spacing), anon, patient=patient + ' ' + CT_file) 
+        plot_3_views(slices, img_slice, anon, patient=patient + ' ' + CT_file) 
         print("ploted NEW")
         plot_all_contours(RS_new,anon,get_image_slice(start_z, np.mean(z_lists[0]),spacing),origin,spacing)
             # Save the current figure to the PDF
