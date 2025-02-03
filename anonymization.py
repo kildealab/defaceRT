@@ -621,12 +621,13 @@ def run_anonymization(PATH,patient,save_path,keywords_keep = [],CT_name='',produ
         list_remove = []
         # note to make customized -- doesn't include structures starting with z and cases where it is OAR-PTV, which should refer to things outside the PTV
         for name in list_names_keep:
-            if '-PTV' in name or name[0].lower()=='z':
+            if '-PTV' in name or 'nonptv' in name.lower() or name[0].lower()=='z':
                 list_remove.append(name)
 
         # Note - separated as can't remove from list while looping through list
         for name in list_remove:
             list_names_keep.remove(name)
+        print("Keeping:",list_names_keep)
         dict_contours_keep,_ = get_all_ROI_contours(list_names_keep,RS)
 
     # print(find_ROI_names(RS)
