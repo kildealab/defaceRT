@@ -17,8 +17,13 @@ def xyz_to_image_coords(X,Y,Z,spacing,origin):
 
 def get_uni_spline(xi,yi):
     
+    if len(xi) < 4:
+         # Use a linear spline if there are fewer than 4 data points
+        tck = interpolate.UnivariateSpline(xi, yi, k=1, s=0)
+    else:
         # Fit spline with s=0 (passing through all points)
-    tck = interpolate.UnivariateSpline(xi, yi, s=0)
+        tck = interpolate.UnivariateSpline(xi, yi, s=0)
+
         
 #         # Evaluate spline for 1000 evenly spaced points
 #         xj, yj = interpolate.splev(np.linspace(0, 1, 1000), tck)
@@ -86,8 +91,12 @@ def get_first_CT(patient_path):
 
 
 def get_eye_contours(RS,start_x,start_y,start_z,z_spacing,pixel_spacing):
-    eye_ROI_names = find_ROI_names(RS,keyword='eye') + find_ROI_names(RS,'globe') + find_ROI_names(RS,'orbit')
+    eye_ROI_names = sorted(find_ROI_names(RS,keyword='eye') + find_ROI_names(RS,'globe') + find_ROI_names(RS,'orbit'), key=len)
     print(eye_ROI_names)
+    if len(eye_ROI_names) == 0:
+        raise Exception("No eye contours found.")
+        print("ERROR: NO EYES.")
+        print(find_ROI_names(RS))
 
     dict_contours, z_lists = get_all_ROI_contours(eye_ROI_names, RS)
     roi_slice, z_smg = get_avg_ROI_z_and_slice(z_lists)
@@ -99,22 +108,34 @@ def get_eye_contours(RS,start_x,start_y,start_z,z_spacing,pixel_spacing):
     print("Centre ROI slice:", img_slice)
 
     roi_x, roi_y = get_ROI_pixel_array(dict_contours[eye_ROI_names[0]][roi_slice],start_x,start_y,pixel_spacing)
-    roi_x2, roi_y2 = get_ROI_pixel_array(dict_contours[eye_ROI_names[1]][roi_slice],start_x,start_y,pixel_spacing)
+
+    if len(eye_ROI_names) > 1: # In case only one eye contoured
+        roi_x2, roi_y2 = get_ROI_pixel_array(dict_contours[eye_ROI_names[1]][roi_slice],start_x,start_y,pixel_spacing)
 
     y_eye = []
-    roi_eye = dict_contours[eye_ROI_names[1]][roi_slice]
+    roi_eye = dict_contours[eye_ROI_names[0]][roi_slice]
     for eye in eye_ROI_names:
-        roi_eye = dict_contours[eye][roi_slice] 
-        for i in range(0,len(roi_eye),3):
-            y_eye.append(roi_eye[i+1])
+        try:
+            roi_eye = dict_contours[eye][roi_slice] 
+            for i in range(0,len(roi_eye),3):
+                y_eye.append(roi_eye[i+1])
+        except:
+            print("No contours for",eye, "at ROI slice",roi_slice)
     max_eye = max(y_eye)
     min_eye = min(y_eye)
     y_cutoff_roi = ((max_eye-min_eye)/2+min_eye)
 
-    min_x = (min(min(roi_x),min(roi_x2)))
-    max_x = (max(max(roi_x),max(roi_x2)))
-    min_y = (min(min(roi_y),min(roi_y2)))
-    max_y = (max(max(roi_y),max(roi_y2)))
+    if len(eye_ROI_names) > 1:
+            
+        min_x = (min(min(roi_x),min(roi_x2)))
+        max_x = (max(max(roi_x),max(roi_x2)))
+        min_y = (min(min(roi_y),min(roi_y2)))
+        max_y = (max(max(roi_y),max(roi_y2)))
+    else:
+        min_x = min(roi_x)
+        max_x = max(roi_x)
+        min_y = min(roi_y)
+        max_y = max(roi_y)
 
     y_cutoff = ((max_y-min_y)/2+min_y)
 
@@ -399,7 +420,7 @@ def resize_dose_map(dose_map,new_size, spacing, new_origin, old_origin,default=0
 def resize_dose_map_3D(dose_map,new_size, spacing, new_origin, old_origin,default=0):
     
     new_size_zxy = new_size[2],new_size[0],new_size[1]
-    print(new_size_zxy)
+    # print(new_size_zxy)
     resized_dose_map = np.zeros(new_size_zxy)
     z_image = int((new_origin[2] - old_origin[2])/spacing[2])
     if debug:
