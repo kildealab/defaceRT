@@ -21,8 +21,10 @@ from defaceRT.plotting import plot_3_views, plot_all_contours
 # to do, fix z mess for when its revesrsed
 def generate_anon_image(image,z_lists,spacing, start_z,y_cutoff, cut_above = True,isodose=[], contours_to_keep = {},origin=[0,0,0],reverse_z=False):
     anon_image = image.copy()
-
-    all_z_slices = sorted(z_lists[0] + [z for z in z_lists[1] if z not in z_lists[0]])
+    if len(z_lists) > 1:
+        all_z_slices = sorted(z_lists[0] + [z for z in z_lists[1] if z not in z_lists[0]])
+    else:
+        all_z_slices = sorted(z_lists[0])
     img_slices = [get_image_slice(start_z, z, spacing) for z in all_z_slices]
     # print("iamge slices",img_slices)
     
@@ -30,7 +32,6 @@ def generate_anon_image(image,z_lists,spacing, start_z,y_cutoff, cut_above = Tru
     z_min = min(img_slices)
     z_max = max(img_slices)
     if z_max >= image.shape[0]:
-        print("YES")
         z_max = image.shape[0]-1
     
     if cut_above:
@@ -166,8 +167,11 @@ def get_contour_curves(slices, all_z_slices, y_cutoff_roi):
 def generate_anon_body(dict_contours_body,z_lists,y_cutoff, isodose=[], body_name = 'BODY',contours_to_keep=[],get_ind = False,reverse_z=False):
     if len(dict_contours_body[body_name]) == 0:
         return None
-    print( len(dict_contours_body[body_name]))
-    all_z_slices = sorted(z_lists[0] + [z for z in z_lists[1] if z not in z_lists[0]])
+
+    if len(z_lists) > 1:
+        all_z_slices = sorted(z_lists[0] + [z for z in z_lists[1] if z not in z_lists[0]])
+    else:
+        all_z_slices = sorted(z_lists[0])
     # print(body_name)
     edited = False
 #     x_iso = X_new
@@ -178,7 +182,6 @@ def generate_anon_body(dict_contours_body,z_lists,y_cutoff, isodose=[], body_nam
     contour_curves = {}
   
     for contour in contours_to_keep:
-        # print(contour)
         contour_curves[contour] = get_contour_curves(contours_to_keep[contour], all_z_slices, y_cutoff)
         # print(contour_curves)
  
@@ -497,10 +500,6 @@ def save_RT_struct_all(RS, RS_file,contour_stack_dict,save_path,patient,CT_file)
             dict_stack = {}
             z_s = []
             z_refs = []
-            
-            # print("CONTOUR STACK HERE")
-            # print(contour_stack)
-            # print("END OF CONTOUR STACK")
 
             for row in contour_stack:
                 z_s.append(row[2])
@@ -513,10 +512,10 @@ def save_RT_struct_all(RS, RS_file,contour_stack_dict,save_path,patient,CT_file)
 
             z_s_done =[]
             for i, ROI_contour_seq in enumerate(RS.ROIContourSequence[index].ContourSequence):
-                print(i, len(ROI_contour_seq.ContourData))
+                # print(i, len(ROI_contour_seq.ContourData))
                 if len(ROI_contour_seq.ContourData) >= 3:
                     z_ref = ROI_contour_seq.ContourData[2] 
-                    print(name,"cont seq",i,':z=',z_ref)
+                    # print(name,"cont seq",i,':z=',z_ref)
                     z_refs.append(z_ref)
                     # if z_ref == -545:
                         # print("******************************************")
@@ -530,7 +529,7 @@ def save_RT_struct_all(RS, RS_file,contour_stack_dict,save_path,patient,CT_file)
                     replacement_contour = []
                     for row in contour_stack:
                         if float(z_ref) == float(row[2]):
-                            print("YES")
+                            # print("YES")
                             # if int(row[2]) == int(-497):
                             #     print(row)
                             #     print("^^^^^497")
@@ -549,15 +548,25 @@ def save_RT_struct_all(RS, RS_file,contour_stack_dict,save_path,patient,CT_file)
 
         # remove eyes, lenses, corneas, more?
         indices_remove = []
+        dict_names = {}
         for i, seq in enumerate(RS.StructureSetROISequence):
             if any(substring in seq.ROIName.lower() for substring in ('eye','globe','orbit','lens','cornea')):
                 # print(seq.ROIName, i)
+                dict_names[i] = seq.ROIName
                 indices_remove.append(i)
+
 
         for index in indices_remove:
             # print(index)
-            for i, ROI_contour_seq in enumerate(RS.ROIContourSequence[index].ContourSequence):
-                RS.ROIContourSequence[index].ContourSequence[i].ContourData = []
+            # error handling for empty roi contour sequence
+          
+            try:
+                
+                for i, ROI_contour_seq in enumerate(RS.ROIContourSequence[index].ContourSequence):
+                    RS.ROIContourSequence[index].ContourSequence[i].ContourData = []
+            except:
+                print("Warning: No contour sequence for structure", dict_names[index])
+
 
                 
     # print(sorted(z_s))
@@ -609,10 +618,15 @@ def run_anonymization(PATH,patient,save_path,keywords_keep = [],CT_name='',produ
         for keyword in keywords_keep:
             list_names_keep = list_names_keep + find_ROI_names(RS,keyword=keyword)
 
+        list_remove = []
         # note to make customized -- doesn't include structures starting with z and cases where it is OAR-PTV, which should refer to things outside the PTV
         for name in list_names_keep:
             if '-PTV' in name or name[0].lower()=='z':
-                list_names_keep.remove(name)
+                list_remove.append(name)
+
+        # Note - separated as can't remove from list while looping through list
+        for name in list_remove:
+            list_names_keep.remove(name)
         dict_contours_keep,_ = get_all_ROI_contours(list_names_keep,RS)
 
     # print(find_ROI_names(RS)
@@ -728,7 +742,10 @@ if __name__ == "__main__":
     CT_name = config["CT_name"]
     produce_pdf = config['print_PDFs']
 
-
+    for name in keywords_keep:
+        if '-PTV' in name or name[0].lower()=='z':
+            keywords_keep.remove(name)
+    # print("Keeping these ")
 
     for i,patient in enumerate(config["patient_list"]):
         print("****************************************************")
@@ -736,14 +753,14 @@ if __name__ == "__main__":
         plt.figure(i)
         patient = str(patient)
         if os.path.exists(PATH+patient):
-            try:
+            # try:
                 run_anonymization(PATH,patient, save_path,keywords_keep,CT_name,produce_pdf)
-            except Exception as e:
-                print("ERROR WITH PATIENT",patient,":",e)
-                if produce_pdf:
-                    plt.subplots(figsize=(10,2))
-                    plt.title(patient+" ERROR")
-                    plt.text(0.5,0.5,e,dict(ha='center',va='center',fontsize=14,color='blue'))
+            # except Exception as e:
+            #     print("ERROR WITH PATIENT",patient,":",e)
+            #     if produce_pdf:
+            #         plt.subplots(figsize=(10,2))
+            #         plt.title(patient+" ERROR")
+            #         plt.text(0.5,0.5,e,dict(ha='center',va='center',fontsize=14,color='blue'))
                    
         else:   
             print("Patient directory "+ PATH+patient + " does not exist.")
