@@ -724,7 +724,7 @@ def run_anonymization(PATH,patient,save_path,keywords_keep = [],CT_name='',produ
             plot_3_views(slices, img_slice, anon, patient=patient + ' ' + CT_file) 
             # print("ploted NEW")
             plt.subplot(2, 2, 3)
-            plot_all_contours(RS_new,anon,get_image_slice(start_z, np.mean(z_lists[0]),spacing),origin,spacing,legend=True)
+            plot_all_contours(RS_new,anon,get_image_slice(start_z, np.mean(z_lists[0]),spacing),origin,spacing,reverse_z,legend=True)
                 # Save the current figure to the PDF
             # produce_pdfs()
             # pdf.savefig() 
@@ -781,7 +781,7 @@ if __name__ == "__main__":
             if CT_specified:
                 CT_list = [CT_name]
             else:
-                CT_list = get_CT_list(patient_path, CT_keyword, CT_dir_name_max_length, CT_dir_name_min_length,ignore_keywords_in_CT)
+                CT_list = get_CT_list(patient_path, CT_keyword,CT_dir_name_min_length, CT_dir_name_max_length, ignore_keywords_in_CT)
 
             for CT_name in CT_list:
                 # if CT_keyword not in CT_name or len(CT_name) > CT_name_max_length or len(CT_name) > CT_name_min_length:

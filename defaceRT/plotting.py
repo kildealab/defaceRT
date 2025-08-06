@@ -11,7 +11,7 @@ plt.rc('ytick', labelsize=4)    # fontsize of the tick labels
 plt.rc('legend', fontsize=8)    # legend fontsize
 plt.rc('figure', titlesize=6)  # fontsize of the figure title
 
-def plot_all_contours(RS,image,slice_num,origin,spacing,ignore_terms=[],legend=False):
+def plot_all_contours(RS,image,slice_num,origin,spacing,reverse_z=False,ignore_terms=[],legend=False):
     contours_not_on_slice = []
    
     all_ROIs = [r for r in find_ROI_names(RS)]
@@ -21,14 +21,15 @@ def plot_all_contours(RS,image,slice_num,origin,spacing,ignore_terms=[],legend=F
 #     dict_contours, z_lists_b = get_all_ROI_contours(all_ROIs, RS)
     colours= get_ROI_colour_dict(RS)
     # print(colours)
-    z_slice = image_to_xyz_coords_single(slice_num, spacing[2],origin[2])[0]
+    z_slice = image_to_xyz_coords_single(slice_num, spacing[2],origin[2],reverse_z)[0]
+    print("Z slice:",z_slice,"Origin:",origin[2],"Spacing:",spacing[2],"Slice number:",slice_num)
 #     xyz_to_image_coords_single(X,spacing,origin):
-    # print(z_slice)
+    print(z_slice)
     # 
     
     plt.imshow(image[slice_num],cmap='gray')
     for roi in all_ROIs:
-        # print(roi)
+        print(roi)
         dict_contours, z_lists = get_all_ROI_contours([roi], RS)
         # print("X")
 #         if len(dict_contours) >1:
@@ -36,9 +37,9 @@ def plot_all_contours(RS,image,slice_num,origin,spacing,ignore_terms=[],legend=F
             if r == roi:
                 break
         try:       
-            # print(z_slice, z_lists[i])
+            print(z_slice, z_lists[i])
             roi_slice = get_ROI_slice(z_slice,z_lists[i])
-            # print("ROI",len(roi_slice))
+            print("ROI",len(roi_slice))
             
             c =colours[roi]
             for s in roi_slice:
