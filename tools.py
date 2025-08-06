@@ -89,10 +89,10 @@ def get_first_CT(patient_path):
     # print(CT_list[0])
     return CT_list[0]
 
-def get_CT_list(patient_path):
-    CT_list = [d for d in os.listdir(patient_path) if d[9:11] == 'CT' and len(d) == 23]
+def get_CT_list(patient_path,CT_keyword='',CT_dir_name_min_len=0,CT_dir_name_max_len=100,ignore_terms=[]):
+    CT_list = sorted([d for d in os.listdir(patient_path) if CT_keyword in d and len(d) >= CT_dir_name_min_len and len(d) <= CT_dir_name_max_len and all(substring.lower() not in d.lower() for substring in ignore_terms) ])
     
-    CT_list.sort(key=lambda x: datetime.strptime(x[12:], "%d_%b_%Y"))
+    # CT_list.sort(key=lambda x: datetime.strptime(x[12:], "%d_%b_%Y"))
     return CT_list
 
 

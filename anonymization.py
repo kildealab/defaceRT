@@ -668,7 +668,7 @@ def run_anonymization(PATH,patient,save_path,keywords_keep = [],CT_name='',produ
         RS_new = save_RT_struct_all(RS, RS_file,dict_new_contours,save_path,patient,CT_file)
         #todotoday - uncomment below
         save_dicom(new_dicom,save_path,patient,CT_file)
-        
+        '''
         body_names = find_ROI_names(RS,'brainstem')
         print(body_names)
         if len(body_names) == 0:
@@ -696,7 +696,7 @@ def run_anonymization(PATH,patient,save_path,keywords_keep = [],CT_name='',produ
         # print(len(full_stack_N))
         #todotoday - uncomment below
         RS_new = save_RT_struct(RS, RS_file,full_stack_N,save_path,patient,CT_file,body_names[0])
-    
+        '''
 
         # print(RS)
         # dict_contours_body,_ = get_all_ROI_contours(['BODY'],RS)
@@ -748,13 +748,19 @@ def run_anonymization(PATH,patient,save_path,keywords_keep = [],CT_name='',produ
 if __name__ == "__main__":
     start = time.time()
     
-    from Anon_config import *
+    from Anon_config import config
 
     PATH = config["path"]
     keywords_keep = config["contours_to_keep"]
     save_path = config["save_path"]
     CT_name = config["CT_name"]
     produce_pdf = config['print_PDFs']
+
+    # optional CT file name specifiers
+    CT_keyword = config['CT_keyword']
+    CT_dir_name_min_length = config['CT_dir_name_min_length']
+    CT_dir_name_max_length = config['CT_dir_name_max_length']
+    ignore_keywords_in_CT = config['ignore_keywords_in_CT']
 
     CT_specified = False
     if len(CT_name) != 0:
@@ -775,21 +781,23 @@ if __name__ == "__main__":
             if CT_specified:
                 CT_list = [CT_name]
             else:
-                CT_list = get_CT_list(patient_path)
+                CT_list = get_CT_list(patient_path, CT_keyword, CT_dir_name_max_length, CT_dir_name_min_length,ignore_keywords_in_CT)
 
             for CT_name in CT_list:
+                # if CT_keyword not in CT_name or len(CT_name) > CT_name_max_length or len(CT_name) > CT_name_min_length:
+                #     continue
                 print(i,CT_name)
                 if os.path.exists(os.path.join(patient_path,CT_name)):
                     plt.figure(i)
                     i+=1
-                    try:
-                        run_anonymization(PATH,patient, save_path,keywords_keep,CT_name,produce_pdf)
-                    except Exception as e:
-                        print("ERROR WITH PATIENT",patient,":",e)
-                        if produce_pdf:
-                            plt.subplots(figsize=(10,2))
-                            plt.title(patient+" ERROR")
-                            plt.text(0.5,0.5,e,dict(ha='center',va='center',fontsize=14,color='blue'))
+                    # try:
+                    run_anonymization(PATH,patient, save_path,keywords_keep,CT_name,produce_pdf)
+                    # except Exception as e:
+                    #     print("ERROR WITH PATIENT",patient,":",e)
+                    #     if produce_pdf:
+                    #         plt.subplots(figsize=(10,2))
+                    #         plt.title(patient+" ERROR")
+                    #         plt.text(0.5,0.5,e,dict(ha='center',va='center',fontsize=14,color='blue'))
                 else:
                     print("CT directory "+ PATH+patient +CT_name+ " does not exist.")
                        
