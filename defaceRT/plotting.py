@@ -3,6 +3,13 @@ import matplotlib.pyplot as plt
 from tools import find_ROI_names, get_ROI_colour_dict, image_to_xyz_coords_single, get_all_ROI_contours, get_ROI_slice,get_ROI_pixel_array
 from collections import OrderedDict
 
+plt.rc('font', size=8)          # controls default text sizes
+plt.rc('axes', titlesize=12)     # fontsize of the axes title
+plt.rc('axes', labelsize=4)    # fontsize of the x and y labels
+plt.rc('xtick', labelsize=4)    # fontsize of the tick labels
+plt.rc('ytick', labelsize=4)    # fontsize of the tick labels
+plt.rc('legend', fontsize=8)    # legend fontsize
+plt.rc('figure', titlesize=6)  # fontsize of the figure title
 
 def plot_all_contours(RS,image,slice_num,origin,spacing,ignore_terms=[],legend=False):
     contours_not_on_slice = []
@@ -47,7 +54,7 @@ def plot_all_contours(RS,image,slice_num,origin,spacing,ignore_terms=[],legend=F
         handles, labels = plt.gca().get_legend_handles_labels()
         by_label = OrderedDict(zip(labels, handles))
 
-        plt.legend(by_label.values(), by_label.keys(),prop={'size': 8},bbox_to_anchor = (1,0.5),loc='center left')
+        plt.legend(by_label.values(), by_label.keys(),prop={'size': 6},bbox_to_anchor = (1,0.5),loc='center left')
     # print("Other contours not on slice:",contours_not_on_slice)
     
     
