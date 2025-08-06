@@ -73,9 +73,9 @@ def get_pixels_hu(scans):
 
 def get_RS(patient_path, CT_file):
     image_path = os.path.join(patient_path,CT_file)
-    # CT = dcm.read_file(image_path)
+    # CT = dcm.dcmread(image_path)
     RS_file = [f for f in os.listdir(image_path) if f[0:2] == 'RS'][0]
-    RS = dcm.read_file(os.path.join(image_path,RS_file))
+    RS = dcm.dcmread(os.path.join(image_path,RS_file))
 
     #TO DO:load dose and RP fiels
     return RS,RS_file
@@ -86,8 +86,14 @@ def get_first_CT(patient_path):
     CT_list = [d for d in os.listdir(patient_path) if d[9:11] == 'CT' and len(d) == 23]
     
     CT_list.sort(key=lambda x: datetime.strptime(x[12:], "%d_%b_%Y"))
-    print(CT_list[0])
+    # print(CT_list[0])
     return CT_list[0]
+
+def get_CT_list(patient_path):
+    CT_list = [d for d in os.listdir(patient_path) if d[9:11] == 'CT' and len(d) == 23]
+    
+    CT_list.sort(key=lambda x: datetime.strptime(x[12:], "%d_%b_%Y"))
+    return CT_list
 
 
 def get_eye_contours(RS,start_x,start_y,start_z,z_spacing,pixel_spacing):
@@ -303,7 +309,7 @@ def find_dose_file(CT_path):
     if num_dose_files == 0:
         raise FileNotFoundError("ERROR: NO DOSE FILES FOUND")
     
-    RD = dcm.read_file(CT_path+'/'+dose_files[0]) 
+    RD = dcm.dcmread(CT_path+'/'+dose_files[0]) 
     
     if num_dose_files == 1:
         return RD
@@ -314,7 +320,7 @@ def find_dose_file(CT_path):
         most_frames = RD.NumberOfFrames
         
         for dose_file in dose_files[1:]:
-            rd = dcm.read_file(CT_path+'/'+dose_file)
+            rd = dcm.dcmread(CT_path+'/'+dose_file)
             spacing = rd[0x0028, 0x0030]
             frames = rd.NumberOfFrames
             

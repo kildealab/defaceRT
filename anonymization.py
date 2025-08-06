@@ -336,7 +336,7 @@ def generate_anon_dose(RD, mask,CT_spacing,CT_origin,CT_size,z_image_slice):
 
 def init_data(patient_path, CT_file, RS):
 
-    slices = [dcm.read_file(patient_path+'/'+CT_file + '/'+ s) for s in os.listdir(patient_path+'/'+CT_file) if s[0:2] =='CT']
+    slices = [dcm.dcmread(patient_path+'/'+CT_file + '/'+ s) for s in os.listdir(patient_path+'/'+CT_file) if s[0:2] =='CT']
     CT_dcm = slices[0]
     # print(CT_dcm)
     # Order slices
@@ -668,7 +668,7 @@ def run_anonymization(PATH,patient,save_path,keywords_keep = [],CT_name='',produ
         RS_new = save_RT_struct_all(RS, RS_file,dict_new_contours,save_path,patient,CT_file)
         #todotoday - uncomment below
         save_dicom(new_dicom,save_path,patient,CT_file)
-        '''
+        
         body_names = find_ROI_names(RS,'brainstem')
         print(body_names)
         if len(body_names) == 0:
@@ -696,7 +696,7 @@ def run_anonymization(PATH,patient,save_path,keywords_keep = [],CT_name='',produ
         # print(len(full_stack_N))
         #todotoday - uncomment below
         RS_new = save_RT_struct(RS, RS_file,full_stack_N,save_path,patient,CT_file,body_names[0])
-        '''
+    
 
         # print(RS)
         # dict_contours_body,_ = get_all_ROI_contours(['BODY'],RS)
