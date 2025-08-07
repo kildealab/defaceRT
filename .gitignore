@@ -1,2 +1,8 @@
 .ipynb_checkpoints/
 
+__pycache__/Anon_config.cpython-313.pyc
+__pycache__/anonymization.cpython-313.pyc
+__pycache__/tools.cpython-313.pyc
+defaceRT/__pycache__/plotting.cpython-313.pyc
+results/Example_CTs/*
+output.pdf
