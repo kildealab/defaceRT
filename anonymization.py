@@ -67,7 +67,7 @@ def generate_anon_image(image,z_lists,spacing, start_z,y_cutoff, cut_above = Tru
     # print(mask)
     # print(mask*-1+1)
     # print(anon_image)
-    return anon_image*mask++(mask*-1+1)*(-1000), mask
+    return anon_image*mask+(mask*-1+1)*(-1000), mask
 
 def reshape_contours_in_region():
 
@@ -265,7 +265,7 @@ def generate_anon_body(dict_contours_body,z_lists,y_cutoff, isodose=[], body_nam
     else:
         return None
 
-def generate_anon_dose(RD, mask,CT_spacing,CT_origin,CT_size,z_image_slice):
+def generate_anon_dose(RD, mask,CT_spacing,CT_origin,CT_size,z_image_slice,reverse_z=False):
     dose_array = RD.pixel_array
     original_dose_size = dose_array.shape
 
@@ -289,7 +289,7 @@ def generate_anon_dose(RD, mask,CT_spacing,CT_origin,CT_size,z_image_slice):
 
 
     # rewrite to instead just resize/resample mask to dose map -- might lose info if changing dose map to image and back
-    resized_mask = reverse_resize_dose_map_3D(mask,new_size,CT_spacing, CT_origin,RD.ImagePositionPatient)
+    resized_mask = reverse_resize_dose_map_3D(mask,new_size,CT_spacing, CT_origin,RD.ImagePositionPatient,reverse_z)
     print("*******")
     print(original_dose_size,CT_spacing, CT_origin,RD.ImagePositionPatient)
     print(resized_mask.shape)
@@ -738,7 +738,7 @@ def run_anonymization(PATH,patient,save_path,keywords_keep = [],CT_name='',produ
 
         try:
             RD = find_dose_file(patient_path+'/'+CT_file)
-            anon_dose = generate_anon_dose(RD, mask,CT_spacing,origin,CT_size,np.mean(z_lists[0]))#img_slice)
+            anon_dose = generate_anon_dose(RD, mask,CT_spacing,origin,CT_size,np.mean(z_lists[0]),reverse_z)#img_slice)
         except Exception as e:
             plt.subplot(2,2,4)
             # plt.title(patient+" ERROR")

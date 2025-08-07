@@ -248,17 +248,23 @@ def get_ROI_colour_dict(RS):
 
     return name_colour_dict
 
-def image_to_xyz_coords_single(X,spacing,origin):
+def image_to_xyz_coords_single(X,spacing,origin,reverse_Z=False):
     if type(X) is not list:
         X = [X]
     X_new = []
     for x in X:
-        X_new.append(x*spacing+origin)
-        
+        if reverse_Z:
+            X_new.append(-x*spacing+origin)
+        else:
+            X_new.append(x*spacing+origin)
+
     return X_new
     
-def get_image_slice(start_z, z_smg, spacing):
+def get_image_slice(start_z, z_smg, spacing,length=0,reverse_z=False):
     img_slice = int((abs(start_z - z_smg)/spacing[2]))
+    if reverse_z:
+        img_slice = length - img_slice - 1
+
     return img_slice
 
 def get_ROI_pixel_array(roi_array,start_x,start_y,pixel_spacing):

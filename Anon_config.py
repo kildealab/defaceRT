@@ -1,5 +1,5 @@
 config ={
-        "patient_list": ['1314'],#965,973,1167,1255,1314,1888,1892,1949,2017,2027,2041,2056,2058,2061],#[19,22],
+        "patient_list": ['Example_CTs'],#965,973,1167,1255,1314,1888,1892,1949,2017,2027,2041,2056,2058,2061],#[19,22],
 	# [437,630,690,747,825,836,868,936,1001,1143,1306,1317,1489,1514,1518,1520,1521,1551,1598,1607,1634,1824],#,],#[437,868,936,1317,1489,1514,1518,1520,1598,1607,],
 	# [23,43,437,487,507,509,621,630,677,681,690,714,726,
 	#  730,743,746,747,783,800,825,836,853,868,870,936,
@@ -33,12 +33,12 @@ config ={
 	"contours_to_keep": ["PTV","brain"],
 	"eye_contour_keywords": ["eye","globe","orbit"], # 
 	"body_contour_keywords": ['body','external'],
-	"path": '/mnt/iDriveShare/Kayla/CBCT_images/kayla_extracted/', # Path to patient directories 
-	"save_path":'/data/kayla/deface_tests/',#anon_images/patients/test_id/',
+	"path": './', # Path to patient directories 
+	"save_path":'results/',#anon_images/patients/test_id/',
 	"CT_name": '', # leave blank if you want it to find the CT
-	'CT_keyword':'_CT_', # A keyword present in all CT names from the TPS, helps to differentiate between CBCT names
-	'CT_dir_name_min_length':23, # minimum string length of CT name
-	'CT_dir_name_max_length':23, # note maximum string length allowed in Structure Set Label tag = 16
+	'CT_keyword':'', # A keyword present in all CT names from the TPS, helps to differentiate between CBCT names
+	'CT_dir_name_min_length':0, # minimum string length of CT name
+	'CT_dir_name_max_length':100, # note maximum string length allowed in Structure Set Label tag = 16
 	'ignore_keywords_in_CT':['copy', 'adap', 'planad', 'qa', 'test','pa','do not use'], # Words to ignore in CT names (ie not real planning CTs)
 	"print_PDFs":True
 
