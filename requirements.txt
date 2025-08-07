@@ -1,0 +1,5 @@
+pydicom==2.4.4
+numpy==1.21.0
+scipy==1.7.0
+matplotlib==3.4.3
+opencv-python==4.5.0
