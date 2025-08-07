@@ -136,7 +136,7 @@ We welcome contributions! If you are interested in contributing, please fork the
 For support or questions, please email Kayla O'Sullivan-Steben at kayla.osullivan-steben@mail.mcgill.ca.
 
 ---
-** Disclaimers **
+## Disclaimers
 * I AM IN THE PROCESS OF CLEANING THIS CODE, I KNOW IT'S A MESS!!!!
 * This software is for research purposes only. Always comply with institutional policies and regulations regarding medical data sharing.
 * There seems to be an issue with defacing dose maps in situations where the CT image z-values increase in the opposite direction as the dose maps'. 
