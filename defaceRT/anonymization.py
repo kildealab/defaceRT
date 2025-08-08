@@ -10,7 +10,10 @@ import cv2
 # sys.path.append('../')
 # from Slice_Selection.slice_selection import *
 # from tools import find_ROI_names, get_first_CT, get_RS, get_pixels_hu, get_eye_contours, get_all_ROI_contours, get_contour_from_ROI_name, get_avg_ROI_z_and_slice
-from tools import *
+from dicom_tools.tools import *
+from dicom_tools.dose import *
+from dicom_tools.structure_set import *
+from dicom_tools.io import get_RS, get_first_CT, get_CT_list, find_dose_file
 from plotting import plot_3_views, plot_all_contours
 
 
@@ -295,13 +298,13 @@ def anon_dicom(anon,slices,slope=1.0,intercept=-1000):
 
 
 def save_dicom(slices,save_path,patient, CT_file):
+    if not os.path.exists(os.path.join(save_path,patient)):
+        os.makedirs(os.path.join(save_path,patient))
+    if not os.path.exists(os.path.join(save_path,patient,CT_file)):
+        os.makedirs(os.path.join(save_path,patient,CT_file))
     for slice in slices:
-        if not os.path.exists(save_path+patient):
-            os.makedirs(save_path+patient)
-        if not os.path.exists(save_path+patient+'/'+CT_file):
-            os.makedirs(save_path+patient+'/'+CT_file)
-        slice.save_as(save_path+patient+'/'+CT_file+'/'+'CT.'+slice.SOPInstanceUID+'.dcm')
-    
+        slice.save_as(os.path.join(save_path,patient,CT_file,'CT.'+slice.SOPInstanceUID+'.dcm'))
+
 def save_RT_struct(RS, RS_file,contour_stack,save_path,patient,CT_file,body_name='BODY'):
     #TODO: make it choose roi name, putting body for now
     if contour_stack == []:
@@ -461,7 +464,7 @@ def save_RT_struct_all(RS, RS_file,contour_stack_dict,save_path,patient,CT_file)
                 
 
     #todotoday - uncomment below
-    RS.save_as(os.path.join(save_path,patient,CT_file,RS_file))
+ 
         # contour_coords.append(ROI_contour_seq.ContourData)
     return RS
 
@@ -536,9 +539,11 @@ def run_anonymization(PATH,patient,save_path,keywords_keep = [],CT_name='',produ
                 # print("to change",contour_name)
                 dict_new_contours[contour_name] = full_stack_N
 
-        RS_new = save_RT_struct_all(RS, RS_file,dict_new_contours,save_path,patient,CT_file)
-        #todotoday - uncomment below
         save_dicom(new_dicom,save_path,patient,CT_file)
+        RS_new = save_RT_struct_all(RS, RS_file,dict_new_contours,save_path,patient,CT_file)
+        RS_new.save_as(os.path.join(save_path,patient,CT_file,RS_file))
+        #todotoday - uncomment below
+        
         '''
         body_names = find_ROI_names(RS,'brainstem')
         print(body_names)
@@ -693,6 +698,9 @@ if __name__ == "__main__":
     print(end-start,"seconds")
     # print(end-start,"/",CTS_done,"CTs =",(end-start)/CTS_done,'seconds per CT ')
     print(list_times)
-    print(np.mean(np.array(list_times)), '+/-',np.std(np.array(list_times)))
+    try:
+        print(np.mean(np.array(list_times)), '+/-',np.std(np.array(list_times)))
+    except Exception:
+        print("Error calculating time.")   
     print("Defaced images saved to",save_path)
 

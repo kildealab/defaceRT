@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from tools import find_ROI_names, get_ROI_colour_dict, image_to_xyz_coords_single, get_all_ROI_contours, get_ROI_slice,get_ROI_pixel_array
+from dicom_tools.structure_set import find_ROI_names, get_all_ROI_contours, get_ROI_slice, get_ROI_pixel_array, get_ROI_colour_dict
+from dicom_tools.tools import image_to_xyz_coords_single
 from collections import OrderedDict
 
 plt.rc('font', size=8)          # controls default text sizes

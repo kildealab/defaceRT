@@ -1,7 +1,7 @@
 config ={
     "path": '../', # Path to patient directories 
     "patient_list": ['Example_CTs'], # Patient directory names in path
-	"save_path":'results/', # Path where new dicoms will be saved
+	"save_path": 'results', # Path where new dicoms will be saved
 	"contours_to_keep": ["PTV","brain"], # Contour keywords to be kept in defaced image
 	"eye_contour_keywords": ["eye","globe","orbit"], # Eye contour keywords 
 	"body_contour_keywords": ['body','external'], # Body contour keywords
