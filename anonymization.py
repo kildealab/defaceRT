@@ -590,7 +590,7 @@ def save_RT_struct_all(RS, RS_file,contour_stack_dict,save_path,patient,CT_file)
     # print("len z_refs", len(z_refs))
     # print("len z_s_done", len(z_s_done))
     #todotoday - uncomment below
-    # RS.save_as(os.path.join(save_path,patient,CT_file,RS_file))
+    RS.save_as(os.path.join(save_path,patient,CT_file,RS_file))
         # contour_coords.append(ROI_contour_seq.ContourData)
     return RS
 
@@ -736,13 +736,15 @@ def run_anonymization(PATH,patient,save_path,keywords_keep = [],CT_name='',produ
             #     df.close() # Close the current batch
 
 
-        try:
-            RD = find_dose_file(patient_path+'/'+CT_file)
-            anon_dose = generate_anon_dose(RD, mask,CT_spacing,origin,CT_size,np.mean(z_lists[0]),reverse_z)#img_slice)
-        except Exception as e:
-            plt.subplot(2,2,4)
-            # plt.title(patient+" ERROR")
-            plt.text(0.5,0.5,e,dict(ha='center',va='center',fontsize=14,color='blue'))
+        # try:
+        RD = find_dose_file(patient_path+'/'+CT_file)
+        anon_dose = generate_anon_dose(RD, mask,CT_spacing,origin,CT_size,np.mean(z_lists[0]),reverse_z)#img_slice)
+        RD.PixelData = anon_dose.tostring()
+        RD.save_as(os.path.join(save_path,patient,CT_file,'RD.'+RD.SOPInstanceUID+'.dcm'))
+        # except Exception as e:
+        #     plt.subplot(2,2,4)
+        #     # plt.title(patient+" ERROR")
+        #     plt.text(0.5,0.5,e,dict(ha='center',va='center',fontsize=14,color='blue'))
 
 
 if __name__ == "__main__":
@@ -804,7 +806,7 @@ if __name__ == "__main__":
         else:   
             print("Patient directory "+ PATH+patient + " does not exist.")
     if produce_pdf:
-        pdf = PdfPages("output.pdf")
+        pdf = PdfPages(os.path.join(save_path,"output.pdf"))
         fig_nums = plt.get_fignums()
         figs = [plt.figure(n) for n in fig_nums]
         for fig in figs:
