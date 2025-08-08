@@ -92,7 +92,7 @@ config = {
 
 3. **Run defacing**:
 ```bash
-python anonymization.py
+python defaceRT/anonymization.py
 ```
 
 4. **Quality assurance**: check `output.pdf` to ensure proper defacing.
