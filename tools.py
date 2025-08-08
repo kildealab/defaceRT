@@ -31,9 +31,7 @@ def get_uni_spline(xi,yi):
         
         
 def reverse_pixels_hu(anon,scans):
-#     image = np.stack([s.pixel_array for s in scans])
-    # Convert to int16 (from sometimes int16), 
-    # should be possible as values should always be low enough (<32k)
+
     image = anon
     image = image.astype(np.int16)
     

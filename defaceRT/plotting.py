@@ -17,22 +17,16 @@ def plot_all_contours(RS,image,slice_num,origin,spacing,reverse_z=False,ignore_t
     all_ROIs = [r for r in find_ROI_names(RS)]
     for term in ignore_terms:
         all_ROIs = [r for r in all_ROIs if term.lower() not in r.lower()]
-    
-#     dict_contours, z_lists_b = get_all_ROI_contours(all_ROIs, RS)
+   
     colours= get_ROI_colour_dict(RS)
-    # print(colours)
+
     z_slice = image_to_xyz_coords_single(slice_num, spacing[2],origin[2],reverse_z)[0]
-    print("Z slice:",z_slice,"Origin:",origin[2],"Spacing:",spacing[2],"Slice number:",slice_num)
-#     xyz_to_image_coords_single(X,spacing,origin):
-    print(z_slice)
-    # 
-    
+
     plt.imshow(image[slice_num],cmap='gray')
     for roi in all_ROIs:
         print(roi)
         dict_contours, z_lists = get_all_ROI_contours([roi], RS)
-        # print("X")
-#         if len(dict_contours) >1:
+
         for i,r in enumerate(dict_contours):
             if r == roi:
                 break
@@ -43,13 +37,11 @@ def plot_all_contours(RS,image,slice_num,origin,spacing,reverse_z=False,ignore_t
             
             c =colours[roi]
             for s in roi_slice:
-                # print(s)
-                # print("**")
                 roi_x, roi_y = get_ROI_pixel_array(dict_contours[roi][s],origin[0],origin[1],spacing)
                 plt.plot(roi_x,roi_y,'-',color=  (c[0]/255,c[1]/255,c[2]/255),label=roi)
         except Exception as e:
             contours_not_on_slice.append(roi)
-            # print(roi,"not on slice.")
+
         
     if legend:
         handles, labels = plt.gca().get_legend_handles_labels()
